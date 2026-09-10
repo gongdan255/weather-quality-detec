@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.haolo.weather.mapper.AirQualityRecordMapper">
+
+    <select id="selectLatestCityMapPoints" resultType="com.haolo.weather.dto.ChinaMapPointDTO">
+        SELECT
+            r.province,
+            r.region,
+            r.city,
+            r.aqi,
+            r.pm25,
+            r.pm10,
+            r.quality_level AS qualityLevel,
+            r.monitor_time AS monitorTime,
+            CASE WHEN r.aqi >= 150 THEN TRUE ELSE FALSE END AS warning
+        FROM air_quality_record r
+        INNER JOIN (
+            SELECT city, MAX(id) AS latest_id
+            FROM (
+                SELECT id, city, monitor_time
+                FROM air_quality_record
+                WHERE (city, monitor_time) IN (
+                    SELECT city, MAX(monitor_time)
+                    FROM air_quality_record
+                    WHERE city NOT LIKE '%-%'
+                    GROUP BY city
+                )
+            ) latest_time_rows
+            GROUP BY city
+        ) latest ON latest.latest_id = r.id
+        WHERE r.city NOT LIKE '%-%'
+        ORDER BY r.aqi DESC
+    </select>
+
+    <select id="selectRegionComparison" resultType="com.haolo.weather.dto.RegionComparisonDTO">
+        SELECT
+            region,
+            ROUND(AVG(aqi), 1) AS avgAqi,
+            ROUND(AVG(pm25), 1) AS avgPm25,
+            ROUND(AVG(pm10), 1) AS avgPm10,
+            COUNT(DISTINCT city) AS cityCount,
+            SUM(CASE WHEN aqi &lt;= 100 THEN 1 ELSE 0 END) AS goodCityCount,
+            SUM(CASE WHEN aqi &gt; 100 THEN 1 ELSE 0 END) AS pollutedCityCount,
+            ROUND(SUM(CASE WHEN aqi &lt;= 100 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1) AS goodRate,
+            SUM(CASE WHEN aqi &gt;= 150 THEN 1 ELSE 0 END) AS warningCount
+        FROM (
+            SELECT r.*
+            FROM air_quality_record r
+            INNER JOIN (
+                SELECT city, MAX(id) AS latest_id
+                FROM (
+                    SELECT id, city, monitor_time
+                    FROM air_quality_record
+                    WHERE (city, monitor_time) IN (
+                        SELECT city, MAX(monitor_time)
+                        FROM air_quality_record
+                        WHERE city NOT LIKE '%-%'
+                        GROUP BY city
+                    )
+                ) latest_time_rows
+                GROUP BY city
+            ) latest ON latest.latest_id = r.id
+            WHERE r.city NOT LIKE '%-%'
+        ) latest_record
+        GROUP BY region
+        ORDER BY avgAqi DESC
+    </select>
+</mapper>

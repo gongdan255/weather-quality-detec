@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: weather-analysis
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/weather_analysis?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: 123456
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 3000ms
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+weather:
+  analysis:
+    demo-data-enabled: true
+  crawler:
+    enabled: true
+    cron: "0 0 */1 * * ?"
+    source-url: "https://air.cnemc.cn:18007/CityData/GetAQIDataPublishLive?cityName="
+    fallback-demo-enabled: false
+    max-city-count: 800
+    station-detail-enabled: true
+    history-expansion-enabled: false
+    history-hours: 0
+    target-record-count: 5000
+    concurrency: 8
